@@ -3,9 +3,11 @@
 import express, { Request, Response } from "express";
 import cookieParser from "cookie-parser";
 import { randomUUID } from "crypto";
+import jwt from "jsonwebtoken";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const JWT_SECRET = process.env.JWT_SECRET || "super-secret-key";
 
 // Middleware
 app.use(cookieParser());
@@ -33,6 +35,28 @@ app.get("/", (req: Request, res: Response) => {
   }
 
   res.send(`Hello World. Your clientId is ${clientId}`);
+});
+
+// LOGIN route (JWT)
+app.post("/login", (req: Request, res: Response) => {
+  const { username, password } = req.body;
+
+  // 🔐 Mock authentication
+  if (username !== "admin" || password !== "password") {
+    return res.status(401).json({ message: "Invalid credentials" });
+  }
+
+  const token = jwt.sign(
+    {
+      username,
+    },
+    JWT_SECRET,
+    {
+      expiresIn: "1h",
+    }
+  );
+
+  res.json({ token });
 });
 
 // GET all people
@@ -70,7 +94,28 @@ app.post("/people", (req: Request, res: Response) => {
   res.status(201).json(newPerson);
 });
 
-// DELETE a person by ID
+// PUT update a person
+app.put("/people/:id", (req: Request, res: Response) => {
+  const id = Number(req.params.id);
+  const { name, age } = req.body;
+
+  const person = people.find(p => p.id === id);
+
+  if (!person) {
+    return res.status(404).json({ message: "Person not found" });
+  }
+
+  if (!name || typeof age !== "number") {
+    return res.status(400).json({ message: "Name and age are required" });
+  }
+
+  person.name = name;
+  person.age = age;
+
+  res.json(person);
+});
+
+// DELETE a person
 app.delete("/people/:id", (req: Request, res: Response) => {
   const id = Number(req.params.id);
   const index = people.findIndex(p => p.id === id);
